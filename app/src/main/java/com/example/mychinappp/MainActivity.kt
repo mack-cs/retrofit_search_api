@@ -9,6 +9,8 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Message
 import android.util.Log
+import android.view.KeyEvent
+import android.view.inputmethod.EditorInfo
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,20 +20,18 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.mychinappp.adapter.ProductListAdapter
 import com.example.mychinappp.data.ProductModel
 import com.example.mychinappp.databinding.ActivityMainBinding
+import com.example.mychinappp.util.Utils
 import com.example.mychinappp.viewmodel.MainActivityViewModel
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanIntentResult
 import com.journeyapps.barcodescanner.ScanOptions
 
 class MainActivity : AppCompatActivity() {
-    private var readPermissionGranted = false
-    private var writePermissionGranted = false
-    private lateinit var permissionsLauncher: ActivityResultLauncher<Array<String>>
 
     lateinit var binding : ActivityMainBinding
-    lateinit var adapter : ProductListAdapter
-    lateinit var  viewModel:MainActivityViewModel
-    lateinit var productModel: ProductModel
+    var counter = 0
+    private lateinit var mediaPlayer:MediaPlayer
+    private lateinit var  viewModel:MainActivityViewModel
 
     private val resultLauncher =
         registerForActivityResult(ScanContract()) { result: ScanIntentResult ->
@@ -40,7 +40,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 val barcode:String = result.contents.toString()
                 binding.barcodeET.setText(barcode)
-                //getSingleProduct(barcode)
+                getSingleProduct(barcode)
             }
         }
 
@@ -51,45 +51,33 @@ class MainActivity : AppCompatActivity() {
         val view = binding.root
         setContentView(view)
         viewModel = ViewModelProvider(this).get(com.example.mychinappp.viewmodel.MainActivityViewModel::class.java)
-
+        mediaPlayer = MediaPlayer.create(this,R.raw.sound)
         setOnClickListener()
         binding.searchBTN.setOnClickListener {
             binding.messageTV.text =""
-            binding.barcodeTV.text = ""
-            binding.lengthTV.text = ""
-            binding.widthTV.text = ""
-            binding.heightTV.text = ""
-            Toast.makeText(this,"Searching....",Toast.LENGTH_SHORT).show()
+            emptyViews()
+
            val barcode = binding.barcodeET.text.toString()
             if (barcode != ""){
+                Toast.makeText(this,"Searching....",Toast.LENGTH_SHORT).show()
                 getSingleProduct(barcode)
             }else{
                 Toast.makeText(this,"Barcode is required!",Toast.LENGTH_LONG).show()
             }
         }
-    }
 
-
-
-//    private fun initRecyclerView(){
-//        binding.productListRV.layoutManager = LinearLayoutManager(this)
-//        adapter = ProductListAdapter()
-//        binding.productListRV.adapter = adapter
-//    }
-
-    private fun getListOfProducts(){
-        viewModel.getLiveDataObserver().observe(this, Observer {
-            if (it != null){
-                adapter.setProductList(it)
-                Log.d("MainData", "$it")
-                adapter.notifyDataSetChanged()
+        binding.barcodeET.setOnEditorActionListener{
+            view, actionId ,keyEvent -> if (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE || keyEvent == null
+            || keyEvent.keyCode == KeyEvent.KEYCODE_ENTER){
+                val barcode:String = binding.barcodeET.text.toString()
+                getSingleProduct(barcode)
+                    true
             }else{
-                Log.d("MainData", "$it")
-                Toast.makeText(this, "Error in getting data", Toast.LENGTH_LONG).show()
+                false
             }
-        })
-        viewModel.makeAPICall()
+        }
     }
+
     private fun setupScanner() {
 
         resultLauncher.launch(ScanOptions().setCaptureActivity(CaptureActivityPortrait::class.java))
@@ -105,31 +93,36 @@ class MainActivity : AppCompatActivity() {
         binding.heightTV.text = productModel.height
     }
     private fun getSingleProduct(barcode:String){
-        val productModel = viewModel.getProductAPICall(barcode)
-
-        viewModel.foundProduct.observe(this, Observer {
-            val product = viewModel.foundProduct.value
-            val mediaPlayer:MediaPlayer =MediaPlayer.create(this,R.raw.sound)
-            if (product != null) {
-                setUpViews(product)
-                val msg = "Product Found"
-                binding.messageTV.text = msg
-                binding.messageTV.setTextColor(ContextCompat.getColor(this,R.color.green))
-                mediaPlayer.start()
-            }else{
-                val msg = "Product Not Found"
-                binding.messageTV.text = msg
-                binding.messageTV.setTextColor(ContextCompat.getColor(this,R.color.red))
-                binding.barcodeTV.text = ""
-                binding.lengthTV.text = ""
-                binding.widthTV.text = ""
-                binding.heightTV.text = ""
-                mediaPlayer.start()
-            }
-        })
+       if (Utils.checkForInternet(this)){
+           viewModel.getProductAPICall(barcode)
+           viewModel.foundProduct.observe(this, Observer {
+               val product = viewModel.foundProduct.value
+               if (product != null) {
+                   setUpViews(product)
+                   val msg = "Product Found"
+                   binding.messageTV.text = msg
+                   binding.messageTV.setTextColor(ContextCompat.getColor(this,R.color.green))
+               }else{
+                   val msg = "Product Not Found"
+                   binding.messageTV.text = msg
+                   binding.messageTV.setTextColor(ContextCompat.getColor(this,R.color.red))
+                   emptyViews()
+               }
+               mediaPlayer.start()
+           })
+       }else{
+           Toast.makeText(this, "No connection available", Toast.LENGTH_SHORT).show()
+       }
 
 
 
+    }
+
+    private fun emptyViews() {
+        binding.barcodeTV.text = ""
+        binding.lengthTV.text = ""
+        binding.widthTV.text = ""
+        binding.heightTV.text = ""
     }
 
 }

@@ -21,25 +21,8 @@ class MainActivityViewModel: ViewModel() {
     }
 
 
-    fun makeAPICall() {
-        val retroInstance = RetroInstance.getRetroInstance()
-        val retroService = retroInstance.create(RetrofitServiceInterface::class.java)
-        val call = retroService.getProductsList()
-        call.enqueue(object : Callback<List<ProductModel>> {
-            override fun onResponse(
-                call: Call<List<ProductModel>>,
-                response: Response<List<ProductModel>>
-            ) {
-               liveDataList.postValue(response.body())
-            }
 
-            override fun onFailure(call: Call<List<ProductModel>>, t: Throwable) {
-                liveDataList.postValue(null)
-            }
-
-        })
-    }
-    fun getProductAPICall(barcode:String): MutableLiveData<ProductModel> {
+    fun getProductAPICall(barcode:String){
         val retroInstance = RetroInstance.getRetroInstance()
         val retroService = retroInstance.create(RetrofitServiceInterface::class.java)
         val call = retroService.getProduct(barcode)
@@ -64,6 +47,5 @@ class MainActivityViewModel: ViewModel() {
             }
 
         })
-        return foundProduct
     }
 }
