@@ -8,11 +8,10 @@ import java.util.concurrent.TimeUnit
 class RetroInstance {
     companion object{
           private const val BASE_URL = "https://promo.mychinasa.co.za/api/slimapi-ppp/public/products/"
-//        private const val BASE_URL = "https://restcountries192.168.0.196/api/slimapi-ppp/public/"
-        val client = OkHttpClient.Builder().apply {
-            this.connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(15, TimeUnit.SECONDS)
+        private val client = OkHttpClient.Builder().apply {
+            this.connectTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(15, TimeUnit.SECONDS)
+                .writeTimeout(10, TimeUnit.SECONDS)
         }.build()
 
 

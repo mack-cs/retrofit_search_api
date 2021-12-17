@@ -6,4 +6,5 @@
     <string name="barcode_">Barcode</string>
     <string name="success">Product Found</string>
     <string name="failure">Product Not Found</string>
+    <string name="product_details">Product Details</string>
 </resources>

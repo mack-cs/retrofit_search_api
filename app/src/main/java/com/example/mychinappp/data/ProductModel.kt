@@ -5,4 +5,6 @@ import kotlinx.serialization.Serializable
 
 //@Serializable
 data class ProductModel(@SerializedName("barcode") val barcode: String?, @SerializedName("length")
-                        val length: String?, @SerializedName("width") val width: String?, @SerializedName("height") val height: String?)
+                        val length: String?, @SerializedName("width") val width: String?, @SerializedName("height") val height: String?){
+    constructor(message: String?) : this(null,null,null,null)
+}

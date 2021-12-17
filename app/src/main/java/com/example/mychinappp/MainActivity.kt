@@ -1,23 +1,16 @@
 package com.example.mychinappp
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.graphics.Color
 import android.media.MediaPlayer
-import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Message
 import android.util.Log
 import android.view.KeyEvent
+import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Toast
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import com.example.mychinappp.adapter.ProductListAdapter
 import com.example.mychinappp.data.ProductModel
 import com.example.mychinappp.databinding.ActivityMainBinding
 import com.example.mychinappp.util.Utils
@@ -29,8 +22,9 @@ import com.journeyapps.barcodescanner.ScanOptions
 class MainActivity : AppCompatActivity() {
 
     lateinit var binding : ActivityMainBinding
-    var counter = 0
-    private lateinit var mediaPlayer:MediaPlayer
+    var count = 0
+    private lateinit var mediaPlayerError:MediaPlayer
+    private lateinit var mediaPlayerSuccess:MediaPlayer
     private lateinit var  viewModel:MainActivityViewModel
 
     private val resultLauncher =
@@ -41,6 +35,7 @@ class MainActivity : AppCompatActivity() {
                 val barcode:String = result.contents.toString()
                 binding.barcodeET.setText(barcode)
                 getSingleProduct(barcode)
+                Log.d("LD-Called","Called after barcode scan")
             }
         }
 
@@ -51,7 +46,8 @@ class MainActivity : AppCompatActivity() {
         val view = binding.root
         setContentView(view)
         viewModel = ViewModelProvider(this).get(com.example.mychinappp.viewmodel.MainActivityViewModel::class.java)
-        mediaPlayer = MediaPlayer.create(this,R.raw.sound)
+        mediaPlayerError = MediaPlayer.create(this,R.raw.error)
+        mediaPlayerSuccess = MediaPlayer.create(this,R.raw.success)
         setOnClickListener()
         binding.searchBTN.setOnClickListener {
             binding.messageTV.text =""
@@ -61,6 +57,7 @@ class MainActivity : AppCompatActivity() {
             if (barcode != ""){
                 Toast.makeText(this,"Searching....",Toast.LENGTH_SHORT).show()
                 getSingleProduct(barcode)
+                Log.d("LD-Called","Called after button click")
             }else{
                 Toast.makeText(this,"Barcode is required!",Toast.LENGTH_LONG).show()
             }
@@ -71,6 +68,7 @@ class MainActivity : AppCompatActivity() {
             || keyEvent.keyCode == KeyEvent.KEYCODE_ENTER){
                 val barcode:String = binding.barcodeET.text.toString()
                 getSingleProduct(barcode)
+            Log.d("LD-Called","Called after done or enter is clicked")
                     true
             }else{
                 false
@@ -79,43 +77,74 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupScanner() {
-
         resultLauncher.launch(ScanOptions().setCaptureActivity(CaptureActivityPortrait::class.java))
     }
 
     private fun setOnClickListener() {
         binding.scanBTN.setOnClickListener { setupScanner() }
     }
+
     private fun setUpViews(productModel: ProductModel){
         binding.barcodeTV.text = productModel.barcode
         binding.lengthTV.text = productModel.length
         binding.widthTV.text = productModel.width
         binding.heightTV.text = productModel.height
     }
+
     private fun getSingleProduct(barcode:String){
+
+        Log.e("ACTIVITY_CALLS", "Called $count ")
+        count += 1
        if (Utils.checkForInternet(this)){
            viewModel.getProductAPICall(barcode)
-           viewModel.foundProduct.observe(this, Observer {
-               val product = viewModel.foundProduct.value
-               if (product != null) {
-                   setUpViews(product)
-                   val msg = "Product Found"
-                   binding.messageTV.text = msg
-                   binding.messageTV.setTextColor(ContextCompat.getColor(this,R.color.green))
+           viewModel.getLoadingStatus().observe(this, Observer {
+               val status = viewModel.getLoadingStatus().value
+               if (status == true){
+                   //binding.containerLLC.visibility = View.INVISIBLE
+                   binding.progressBar.visibility = View.VISIBLE
                }else{
-                   val msg = "Product Not Found"
-                   binding.messageTV.text = msg
-                   binding.messageTV.setTextColor(ContextCompat.getColor(this,R.color.red))
-                   emptyViews()
+                   binding.containerLLC.visibility = View.VISIBLE
+                   binding.progressBar.visibility = View.GONE
                }
-               mediaPlayer.start()
            })
+
+           viewModel.getFoundProduct().observe(this, Observer { it ->
+               if (it != null) {
+                   setUpViews(it)
+                   binding.detailsContainer.visibility = View.VISIBLE
+                   val msg = "Product Found"
+                   binding.barcodeET.setText("")
+                   binding.messageTV.text = msg
+                   binding.messageTV.setTextColor(ContextCompat.getColor(this, R.color.green))
+                   mediaPlayerSuccess.start()
+               } else {
+                   binding.detailsContainer.visibility = View.GONE
+                   var errMsg: String? = ""
+                   viewModel.getErrorMessage().observe(this, {
+                       errMsg = it.toString()
+                   })
+                   binding.messageTV.text = errMsg
+                   binding.messageTV.setTextColor(ContextCompat.getColor(this, R.color.red))
+                   emptyViews()
+                   mediaPlayerError.start()
+               }
+           })
+
        }else{
            Toast.makeText(this, "No connection available", Toast.LENGTH_SHORT).show()
        }
 
 
+    }
 
+
+    override fun onResume() {
+        super.onResume()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        Log.d("Observer", "OnStop")
     }
 
     private fun emptyViews() {
