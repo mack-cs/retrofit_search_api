@@ -35,26 +35,27 @@ class MainActivityViewModel: ViewModel() {
                 val data = response.body()
                 isLoadingData.value = false
                 if (data?.barcode != null) {
-                    foundProduct.postValue(data)
-
+                    foundProduct.value = data
                 }else if (data != null){
-                    foundProduct.postValue(null)
+                    foundProduct.value = null
                     errorMessage.value = "Product Not Found"
                 }
             }
 
             override fun onFailure(call: Call<ProductModel>, t: Throwable) {
                 isLoadingData.value = false
-                foundProduct.postValue(null)
+                foundProduct.value = null
                 if (t is IllegalStateException){
                     errorMessage.value = "Product Not Found"
                 }
                 if(t is SocketTimeoutException){
                     errorMessage.value = "Connection Timeout"
                 }
-                foundProduct.postValue(null)
             }
 
         })
     }
+
+
 }
+

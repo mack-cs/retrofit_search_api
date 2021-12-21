@@ -9,6 +9,8 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.example.mychinappp.data.ProductModel
@@ -48,6 +50,7 @@ class MainActivity : AppCompatActivity() {
         viewModel = ViewModelProvider(this).get(com.example.mychinappp.viewmodel.MainActivityViewModel::class.java)
         mediaPlayerError = MediaPlayer.create(this,R.raw.error)
         mediaPlayerSuccess = MediaPlayer.create(this,R.raw.success)
+        binding.barcodeET.requestFocus();
         setOnClickListener()
         binding.searchBTN.setOnClickListener {
             binding.messageTV.text =""
@@ -68,7 +71,6 @@ class MainActivity : AppCompatActivity() {
             || keyEvent.keyCode == KeyEvent.KEYCODE_ENTER){
                 val barcode:String = binding.barcodeET.text.toString()
                 getSingleProduct(barcode)
-            Log.d("LD-Called","Called after done or enter is clicked")
                     true
             }else{
                 false
@@ -91,10 +93,26 @@ class MainActivity : AppCompatActivity() {
         binding.heightTV.text = productModel.height
     }
 
-    private fun getSingleProduct(barcode:String){
+    fun <T> LiveData<T>.observeOnceAfterInit(owner: LifecycleOwner, observer: (T) -> Unit) {
+        var firstObservation = true
 
-        Log.e("ACTIVITY_CALLS", "Called $count ")
-        count += 1
+        observe(owner, object: Observer<T>
+        {
+            override fun onChanged(value: T) {
+                if(firstObservation)
+                {
+                    firstObservation = false
+                }
+                else
+                {
+                    removeObserver(this)
+                    observer(value)
+                }
+            }
+        })
+    }
+
+    private fun getSingleProduct(barcode:String){
        if (Utils.checkForInternet(this)){
            viewModel.getProductAPICall(barcode)
            viewModel.getLoadingStatus().observe(this, Observer {
@@ -107,8 +125,9 @@ class MainActivity : AppCompatActivity() {
                    binding.progressBar.visibility = View.GONE
                }
            })
+           val productLiveData = viewModel.getFoundProduct()
 
-           viewModel.getFoundProduct().observe(this, Observer { it ->
+           productLiveData.observe(this, Observer { it ->
                if (it != null) {
                    setUpViews(it)
                    binding.detailsContainer.visibility = View.VISIBLE
@@ -128,15 +147,14 @@ class MainActivity : AppCompatActivity() {
                    emptyViews()
                    mediaPlayerError.start()
                }
+               binding.barcodeET.requestFocus();
+
            })
 
        }else{
            Toast.makeText(this, "No connection available", Toast.LENGTH_SHORT).show()
        }
-
-
     }
-
 
     override fun onResume() {
         super.onResume()
